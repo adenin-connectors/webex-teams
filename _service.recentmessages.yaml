@@ -1,0 +1,9 @@
+ServiceName: 'recentmessages'
+InterfaceName: 'items'
+Description: 'List Of Recent Messages'
+APIDoc: ''
+Interfaces: ''
+RequiredScopes: ''
+AdditionalParameters:
+Method: ''
+
