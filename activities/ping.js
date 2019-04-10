@@ -1,15 +1,16 @@
 'use strict';
+
 const api = require('./common/api');
 
-module.exports = async (activity) => {
+module.exports = async () => {
   try {
     const response = await api('/rooms');
 
-    activity.Response.Data = {
+    Activity.Response.Data = {
       success: response && response.statusCode === 200
     };
   } catch (error) {
     Activity.handleError(error);
-    activity.Response.Data.success = false;
+    Activity.Response.Data.success = false;
   }
 };
