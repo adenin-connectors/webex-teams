@@ -30,3 +30,6 @@ Scopes:
 - ScopeName: spark:rooms_read
   ScopeDescription: List the titles of rooms that you are in.
   IsDefault: false
+- ScopeName: spark:people_read
+  ScopeDescription: Read your users' company directory
+  IsDefault: false
