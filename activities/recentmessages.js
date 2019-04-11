@@ -55,15 +55,25 @@ module.exports = async () => {
           raw: raw
         };
 
+        // get room name for the message
+        for (let k = 0; k < roomsResponse.body.items.length; k++) {
+          if (raw.roomId === roomsResponse.body.items[k].id) item.room = roomsResponse.body.items[k].title;
+        }
+
+        // push constructed item
+        data.messages.items.push(item);
+
         // if we haven't encountered this user yet, store promise to retrieve user data in map
         if (!users.has(raw.personId)) users.set(raw.personId, api(`/people/${raw.personId}`));
 
-        data.messages.items.push(item);
-
-        //checks for files
+        //checks for files, store promise to get info as well as author and date
         if (raw.files) {
           for (let z = 0; z < raw.files.length; z++) {
-            files.push(api.head(raw.files[z]));
+            files.push({
+              promise: api.head(raw.files[z]),
+              personId: raw.personId,
+              created: raw.created
+            });
           }
         }
 
@@ -97,9 +107,15 @@ module.exports = async () => {
           data.mentions.items[j].avatar = userResults[i].body.avatar;
         }
       }
+
+      // get correct user name to display with file info
+      for (let j = 0; j < files.length; j++) {
+        if (files[j].personId === userResults[i].body.id) files[j].displayName = userResults[i].body.displayName;
+      }
     }
 
-    const fileResults = await Promise.all(files);
+    // await file promises to get type and filename
+    const fileResults = await Promise.all(files.map(async (file) => file.promise));
 
     for (let i = 0; i < fileResults.length; i++) {
       if (Activity.isErrorResponse(fileResults[i])) return;
@@ -107,8 +123,10 @@ module.exports = async () => {
       const disposition = fileResults[i].headers['content-disposition'];
 
       data.files.items.push({
-        filetype: fileResults[i].headers['content-type'],
-        filename: disposition.substring(disposition.indexOf('"') + 1, disposition.lastIndexOf('"'))
+        type: fileResults[i].headers['content-type'],
+        name: disposition.substring(disposition.indexOf('"') + 1, disposition.lastIndexOf('"')),
+        author: files[i].displayName,
+        created: files[i].created
       });
     }
 
