@@ -72,7 +72,8 @@ module.exports = async () => {
             files.push({
               promise: api.head(raw.files[z]),
               personId: raw.personId,
-              created: raw.created
+              created: raw.created,
+              raw: raw.files[z]
             });
           }
         }*/
