@@ -24,12 +24,12 @@ module.exports = async () => {
       if (Activity.isErrorResponse(messageResults[i])) return;
 
       filteredMessageResults.push(filterMessagesByTime(messageResults[i].body.items));
-      filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
+      //filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
     }
 
     //converts messages to items and filters out mentions and files
     const users = new Map();
-    const files = [];
+    //const files = []; // disable files for now
 
     const data = {
       messages: {
@@ -37,10 +37,10 @@ module.exports = async () => {
       },
       mentions: {
         items: []
-      },
+      }/*,
       files: {
         items: []
-      }
+      }*/
     };
 
     for (let i = 0; i < filteredMessageResults.length; i++) {
@@ -67,7 +67,7 @@ module.exports = async () => {
         if (!users.has(raw.personId)) users.set(raw.personId, api(`/people/${raw.personId}`));
 
         //checks for files, store promise to get info as well as author and date
-        if (raw.files) {
+        /*if (raw.files) {
           for (let z = 0; z < raw.files.length; z++) {
             files.push({
               promise: api.head(raw.files[z]),
@@ -75,7 +75,7 @@ module.exports = async () => {
               created: raw.created
             });
           }
-        }
+        }*/
 
         //checks for mentions
         if (raw.mentionedPeople) {
@@ -109,13 +109,13 @@ module.exports = async () => {
       }
 
       // get correct user name to display with file info
-      for (let j = 0; j < files.length; j++) {
+      /*for (let j = 0; j < files.length; j++) {
         if (files[j].personId === userResults[i].body.id) files[j].displayName = userResults[i].body.displayName;
-      }
+      }*/
     }
 
     // await file promises to get type and filename
-    const fileResults = await Promise.all(files.map(async (file) => file.promise));
+    /*const fileResults = await Promise.all(files.map(async (file) => file.promise));
 
     for (let i = 0; i < fileResults.length; i++) {
       if (Activity.isErrorResponse(fileResults[i])) return;
@@ -128,7 +128,7 @@ module.exports = async () => {
         author: files[i].displayName,
         created: files[i].created
       });
-    }
+    }*/
 
     Activity.Response.Data = data;
   } catch (error) {
