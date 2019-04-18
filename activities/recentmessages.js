@@ -2,8 +2,9 @@
 
 const api = require('./common/api');
 
-module.exports = async () => {
+module.exports = async (activity) => {
   try {
+    api.initialize(activity);
     const roomsResponse = await api('/rooms');
 
     if (Activity.isErrorResponse(roomsResponse)) return;
@@ -23,8 +24,8 @@ module.exports = async () => {
     for (let i = 0; i < messageResults.length; i++) {
       if (Activity.isErrorResponse(messageResults[i])) return;
 
-      filteredMessageResults.push(filterMessagesByTime(messageResults[i].body.items));
-      //filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
+      //filteredMessageResults.push(filterMessagesByTime(messageResults[i].body.items));
+      filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
     }
 
     //converts messages to items and filters out mentions and files
@@ -37,10 +38,10 @@ module.exports = async () => {
       },
       mentions: {
         items: []
-      }/*,
+      },
       files: {
         items: []
-      }*/
+      }
     };
 
     for (let i = 0; i < filteredMessageResults.length; i++) {
@@ -131,7 +132,7 @@ module.exports = async () => {
       });
     }*/
 
-    Activity.Response.Data = data;
+    activity.Response.Data = data;
   } catch (error) {
     Activity.handleError(error);
   }

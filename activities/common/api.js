@@ -4,6 +4,8 @@ const got = require('got');
 const HttpAgent = require('agentkeepalive');
 const HttpsAgent = HttpAgent.HttpsAgent;
 
+let _activity = null;
+
 function api(path, opts) {
   if (typeof path !== 'string') {
     return Promise.reject(new TypeError(`Expected \`path\` to be a string, got ${typeof path}`));
@@ -11,7 +13,7 @@ function api(path, opts) {
 
   opts = Object.assign({
     json: true,
-    token: Activity.Context.connector.token,
+    token: _activity.Context.connector.token,
     endpoint: 'https://api.ciscospark.com/v1',
     agent: {
       http: new HttpAgent(),
@@ -43,6 +45,10 @@ const helpers = [
   'head',
   'delete'
 ];
+
+api.initialize = (activity) => {
+  _activity = activity;
+};
 
 api.stream = (url, opts) => got(url, Object.assign({}, opts, {
   json: false,
