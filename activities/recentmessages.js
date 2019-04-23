@@ -7,7 +7,7 @@ module.exports = async (activity) => {
     api.initialize(activity);
     const roomsResponse = await api('/rooms');
 
-    if (Activity.isErrorResponse(roomsResponse)) return;
+    if ($.isErrorResponse(activity, roomsResponse)) return;
 
     // groups api requests and sends them in parallel
     const messages = [];
@@ -22,7 +22,7 @@ module.exports = async (activity) => {
     const filteredMessageResults = [];
 
     for (let i = 0; i < messageResults.length; i++) {
-      if (Activity.isErrorResponse(messageResults[i])) return;
+      if ($.isErrorResponse(activity, messageResults[i])) return;
 
       //filteredMessageResults.push(filterMessagesByTime(messageResults[i].body.items));
       filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
@@ -92,7 +92,7 @@ module.exports = async (activity) => {
 
     // Loop through user info for all users
     for (let i = 0; i < userResults.length; i++) {
-      if (Activity.isErrorResponse(userResults[i])) return;
+      if ($.isErrorResponse(activity, userResults[i])) return;
 
       // map extended user info onto matching messages
       for (let j = 0; j < data.messages.items.length; j++) {
@@ -134,7 +134,7 @@ module.exports = async (activity) => {
 
     activity.Response.Data = data;
   } catch (error) {
-    Activity.handleError(error);
+    $.handleError(activity, error);
   }
 };
 
