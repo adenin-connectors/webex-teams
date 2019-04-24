@@ -5,6 +5,7 @@ const api = require('./common/api');
 module.exports = async (activity) => {
   try {
     api.initialize(activity);
+
     const roomsResponse = await api('/rooms');
 
     if ($.isErrorResponse(activity, roomsResponse)) return;
@@ -24,9 +25,11 @@ module.exports = async (activity) => {
     for (let i = 0; i < messageResults.length; i++) {
       if ($.isErrorResponse(activity, messageResults[i])) return;
 
-      //filteredMessageResults.push(filterMessagesByTime(messageResults[i].body.items));
-      filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
+      filteredMessageResults.push(filterMessagesByTime(messageResults[i].body.items));
+      //filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
     }
+
+    const me = await api('/people/me');
 
     //converts messages to items and filters out mentions and files
     const users = new Map();
@@ -69,20 +72,20 @@ module.exports = async (activity) => {
 
         //checks for files, store promise to get info as well as author and date
         /*if (raw.files) {
-          for (let z = 0; z < raw.files.length; z++) {
+          for (let k = 0; k < raw.files.length; k++) {
             files.push({
-              promise: api.head(raw.files[z]),
+              promise: api.head(raw.files[k]),
               personId: raw.personId,
               created: raw.created,
-              raw: raw.files[z]
+              raw: raw.files[k]
             });
           }
         }*/
 
         //checks for mentions
         if (raw.mentionedPeople) {
-          for (let z = 0; z < raw.mentionedPeople.length; z++) {
-            data.mentions.items.push(raw.mentionedPeople[z]);
+          for (let k = 0; k < raw.mentionedPeople.length; k++) {
+            if (raw.mentionedPeople[i] === me.body.id) data.mentions.items.push(item);
           }
         }
       }
