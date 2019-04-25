@@ -33,7 +33,7 @@ module.exports = async (activity) => {
       if ($.isErrorResponse(activity, messages[i])) return;
 
       filteredMessages.push(filterMessagesByTime(messages[i].body.items));
-      //filteredMessageResults.push(messageResults[i].body.items); // for testing, if recent items is empty or too small
+      //filteredMessages.push(messages[i].body.items); // for testing, if recent items is empty or too small
     }
 
     const me = await api('/people/me');
