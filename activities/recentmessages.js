@@ -6,12 +6,10 @@ const dateDescending = (a, b) => {
   if (a.lastActivity && b.lastActivity) {
     a = new Date(a.lastActivity);
     b = new Date(b.lastActivity);
-
-    return a > b ? -1 : (a < b ? 1 : 0);
+  } else {
+    a = new Date(a.date);
+    b = new Date(b.date);
   }
-
-  a = new Date(a.date);
-  b = new Date(b.date);
 
   return a > b ? -1 : (a < b ? 1 : 0);
 };
@@ -40,14 +38,12 @@ module.exports = async (activity) => {
       if ($.isErrorResponse(activity, messages[i])) return;
 
       filteredMessages.push(filterMessagesByTime(messages[i].body.items));
-      filteredMessages.push(messages[i].body.items); // for testing, if recent items is empty or too small
     }
 
     const me = await api('/people/me');
 
     //converts messages to items and filters out mentions and files
     const userPromises = new Map();
-    //const rawFiles = []; // disable files for now
 
     const data = {
       messages: {
@@ -69,32 +65,22 @@ module.exports = async (activity) => {
           title: raw.roomType,
           description: raw.text,
           link: raw.url,
-          date: (new Date(raw.created)).toISOString(),
+          date: new Date(raw.created),
           raw: raw
         };
 
         // get room name for the message
         for (let k = 0; k < rooms.body.items.length; k++) {
-          if (raw.roomId === rooms.body.items[k].id && raw.roomType !== 'direct') item.room = rooms.body.items[k].title;
+          if (raw.roomId === rooms.body.items[k].id) item.room = rooms.body.items[k].title;
         }
 
         // push constructed item
         data.messages.items.push(item);
 
         // if we haven't encountered this user yet, store promise to retrieve user data in map
-        if (!userPromises.has(raw.personId)) userPromises.set(raw.personId, api(`/people/${raw.personId}`));
-
-        //checks for files, store promise to get info as well as author and date
-        /*if (raw.files) {
-          for (let k = 0; k < raw.files.length; k++) {
-            rawFiles.push({
-              promise: api.head(raw.files[k]),
-              personId: raw.personId,
-              created: raw.created,
-              raw: raw.files[k]
-            });
-          }
-        }*/
+        if (!userPromises.has(raw.personId)) userPromises.set(raw.personId, api(`/people/${raw.personId}`, {
+          throwHttpErrors: false
+        }));
 
         //checks for mentions
         if (raw.mentionedPeople) {
@@ -105,58 +91,31 @@ module.exports = async (activity) => {
       }
     }
 
-    await Promise.all(userPromises.values())
-      .catch((err) => {
-        logger.error('A user\'s info failed to resolve', err);
-        return userPromises.values();
-      })
-      .then((users) => {
-        // Loop through user info for all users
-        for (let i = 0; i < users.length; i++) {
-          if ($.isErrorResponse(activity, users[i])) return;
+    const users = await Promise.all(userPromises.values());
 
-          // map extended user info onto matching messages
-          for (let j = 0; j < data.messages.items.length; j++) {
-            if (data.messages.items[j].raw.personId === users[i].body.id) {
-              data.messages.items[j].displayName = users[i].body.displayName;
-              data.messages.items[j].avatar = users[i].body.avatar;
-            }
-          }
+    // Loop through user info for all users
+    for (let i = 0; i < users.length; i++) {
+      if ($.isErrorResponse(activity, users[i])) continue;
 
-          // map extended user info onto matching mentions
-          for (let j = 0; j < data.mentions.items.length; j++) {
-            if (data.messages.items[j].raw.personId === users[i].body.id) {
-              data.mentions.items[j].displayName = users[i].body.displayName;
-              data.mentions.items[j].avatar = users[i].body.avatar;
-            }
-          }
-
-          // get correct user name to display with file info
-          /*for (let j = 0; j < rawFiles.length; j++) {
-            if (rawFiles[j].personId === users[i].body.id) rawFiles[j].displayName = users[i].body.displayName;
-          }*/
+      // map extended user info onto matching messages
+      for (let j = 0; j < data.messages.items.length; j++) {
+        if (data.messages.items[j].raw.personId === users[i].body.id) {
+          data.messages.items[j].displayName = users[i].body.displayName;
+          data.messages.items[j].avatar = users[i].body.avatar;
         }
-      });
+      }
 
-    // await file promises to get type and filename
-    /*const files = await Promise.all(rawFiles.map(async (file) => file.promise));
-
-    for (let i = 0; i < files.length; i++) {
-      if ($.isErrorResponse(activity, files[i])) return;
-
-      const disposition = files[i].headers['content-disposition'];
-
-      data.files.items.push({
-        type: files[i].headers['content-type'],
-        name: disposition.substring(disposition.indexOf('"') + 1, disposition.lastIndexOf('"')),
-        author: rawFiles[i].displayName,
-        created: rawFiles[i].created
-      });
-    }*/
+      // map extended user info onto matching mentions
+      for (let j = 0; j < data.mentions.items.length; j++) {
+        if (data.messages.items[j].raw.personId === users[i].body.id) {
+          data.mentions.items[j].displayName = users[i].body.displayName;
+          data.mentions.items[j].avatar = users[i].body.avatar;
+        }
+      }
+    }
 
     data.messages.items.sort(dateDescending);
     data.mentions.items.sort(dateDescending);
-    data.files.items.sort(dateDescending);
 
     // group messages by last active room
     const groupedMessages = [];
@@ -172,6 +131,7 @@ module.exports = async (activity) => {
     data.messages.items = groupedMessages;
 
     activity.Response.Data = data;
+    activity.Response.ErrorCode = 0;
   } catch (error) {
     $.handleError(activity, error);
   }
@@ -179,19 +139,19 @@ module.exports = async (activity) => {
 
 // checks for messages that were written after 'timeToCheck' Date Time
 function filterMessagesByTime(messages) {
-  const recentMessages = [];
-  const timeToCheckAfter = new Date().valueOf() - 2 * 60 * 60 * 1000; // now - 2 hours
+  const recents = [];
+  const now = new Date();
+  const timeToCheckAfter = new Date(now.setHours(now.getHours() - 12));
 
-  for (let j = messages.length - 1; j >= 0; j--) {
+  for (let j = 0; j < messages.length; j++) {
     const createDate = new Date(messages[j].created).valueOf();
 
     if (createDate > timeToCheckAfter) {
-      recentMessages.push(messages[j]);
+      recents.push(messages[j]);
     } else {
-      // if we hit message older than 'timeToCheck' we break as all messages after that are older
       break;
     }
   }
 
-  return recentMessages;
+  return recents;
 }
