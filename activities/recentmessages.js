@@ -144,7 +144,7 @@ function filterMessagesByTime(messages) {
   const timeToCheckAfter = new Date(now.setHours(now.getHours() - 12));
 
   for (let j = 0; j < messages.length; j++) {
-    const createDate = new Date(messages[j].created).valueOf();
+    const createDate = new Date(messages[j].created);
 
     if (createDate > timeToCheckAfter) {
       recents.push(messages[j]);
