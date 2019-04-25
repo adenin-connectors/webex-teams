@@ -46,8 +46,12 @@ module.exports = async (activity) => {
     const userPromises = new Map();
 
     const data = {
-      messages: {items: []},
-      mentions: {items: []},
+      messages: {
+        items: []
+      },
+      mentions: {
+        items: []
+      },
       files: {items: []} // for preserved card logic
     };
 
