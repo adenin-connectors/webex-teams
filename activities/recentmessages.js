@@ -2,6 +2,13 @@
 
 const api = require('./common/api');
 
+const dateDescending = (a, b) => {
+  a = new Date(a.date);
+  b = new Date(b.date);
+
+  return a > b ? -1 : (a < b ? 1 : 0);
+};
+
 module.exports = async (activity) => {
   try {
     api.initialize(activity);
@@ -50,12 +57,12 @@ module.exports = async (activity) => {
     for (let i = 0; i < filteredMessageResults.length; i++) {
       for (let j = 0; j < filteredMessageResults[i].length; j++) {
         const raw = filteredMessageResults[i][j];
-
         const item = {
           id: raw.id,
           title: raw.roomType,
           description: raw.text,
           link: raw.url,
+          date: (new Date(raw.created)).toISOString(),
           raw: raw
         };
 
@@ -134,6 +141,10 @@ module.exports = async (activity) => {
         created: files[i].created
       });
     }*/
+
+    data.messages.items.sort(dateDescending);
+    data.mentions.items.sort(dateDescending);
+    data.files.items.sort(dateDescending);
 
     activity.Response.Data = data;
   } catch (error) {
