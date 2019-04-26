@@ -50,17 +50,16 @@ module.exports = async (activity) => {
       filteredMessages.push(filterMessagesByTime(messagesResponses[i].body.items));
     }
 
-    // need current user's id to know when they've been mentioned
-    const me = await api('/people/me');
-
-    // convert messages to items and filter out mentions and files
+    // convert messages to items and filter out mentions
     const userPromises = new Map(); // map promise to ID so we don't duplicate
 
     const data = {
       messages: {
+        count: 0,
         items: []
       },
       mentions: {
+        count: 0,
         items: []
       },
       files: {items: []} // for preserved card logic
@@ -68,8 +67,11 @@ module.exports = async (activity) => {
 
     // for each room
     for (let i = 0; i < filteredMessages.length; i++) {
-      // for each message in current room
-      for (let j = 0; j < filteredMessages[i].length; j++) {
+      // count messages
+      data.messages.count += filteredMessages[i].length;
+
+      // for first 3 messages in current room
+      for (let j = 0; j < 3 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
         const item = {
           id: raw.id,
@@ -93,8 +95,10 @@ module.exports = async (activity) => {
           }
 
           break;
-        // last
-        case (filteredMessages[i].length - 1): item.gtype = 'last';
+        // 3rd message is last message displayed
+        case 2 || filteredMessages[i].length - 1:
+          item.gtype = 'last';
+          item.hiddenCount = filteredMessages[i].length - 3;
         }
 
         // store a promise to retrieve user data, if one doesn't yet exist
@@ -104,15 +108,68 @@ module.exports = async (activity) => {
 
         // push constructed item
         data.messages.items.push(item);
+      }
 
-        // if there's mentions, and one is of current user, also push message to mentions array
-        if (raw.mentionedPeople) {
-          for (let k = 0; k < raw.mentionedPeople.length; k++) {
-            if (raw.mentionedPeople[k] === me.body.id) {
-              data.mentions.items.push(item);
-              break; // can ignore remaining mentions once found
+      // keep track of mentions from current room so we can stop after 3
+      let currentRoomMentions = 0;
+
+      // don't call api for user info until we know we definitely need it
+      let me = null;
+
+      // need to check every message in current room for mentions
+      for (let j = 0; j < filteredMessages[i].length; j++) {
+        // if we already have 3 we can stop
+        if (currentRoomMentions === 3) break;
+
+        const raw = filteredMessages[i][j];
+
+        // skip if no mentions
+        if (!raw.mentionedPeople) continue;
+
+        // need current user's id to know when they've been mentioned
+        if (!me) me = await api('/people/me');
+
+        // check each mention
+        for (let k = 0; k < raw.mentionedPeople.length; k++) {
+          // skip mention if not me
+          if (raw.mentionedPeople[k] !== me.body.id) continue;
+
+          // we've found a mention, construct it
+          currentRoomMentions++;
+
+          const item = {
+            id: raw.id,
+            title: raw.roomType,
+            description: raw.text,
+            link: raw.url,
+            date: new Date(raw.created),
+            personId: raw.personId
+          };
+
+          // indicate if its the first or last mention to be displayed
+          switch (currentRoomMentions) {
+          // first
+          case 1:
+            item.gtype = 'first';
+
+            // get room name for the message
+            for (let l = 0; l < rooms.length; l++) {
+              if (raw.roomId === rooms[l].id) item.roomName = rooms[l].title;
+              break; // skip remaining once found
             }
+
+            break;
+          // 3rd message is last message displayed
+          case 3: item.gtype = 'last';
           }
+
+          // store a promise to retrieve user data, if one doesn't yet exist
+          if (!userPromises.has(raw.personId)) userPromises.set(raw.personId, api(`/people/${raw.personId}`, {
+            throwHttpErrors: false
+          }));
+
+          data.mentions.items.push(item);
+          data.mentions.count++;
         }
       }
     }
@@ -128,6 +185,7 @@ module.exports = async (activity) => {
       // map extended user info onto matching messages
       for (let j = 0; j < data.messages.items.length; j++) {
         if (data.messages.items[j].personId === users[i].body.id) {
+          data.messages.items[j].personId = undefined; // remove irrelevant property
           data.messages.items[j].displayName = users[i].body.displayName;
           data.messages.items[j].avatar = users[i].body.avatar;
         }
@@ -136,6 +194,7 @@ module.exports = async (activity) => {
       // map extended user info onto matching mentions
       for (let j = 0; j < data.mentions.items.length; j++) {
         if (data.messages.items[j].personId === users[i].body.id) {
+          data.mentions.items[j].personId = undefined; // remove irrelevant property
           data.mentions.items[j].displayName = users[i].body.displayName;
           data.mentions.items[j].avatar = users[i].body.avatar;
         }
@@ -154,9 +213,7 @@ function isRecent(date) {
   const now = new Date();
   const limit = new Date(now.setHours(now.getHours() - 12));
 
-  const isRecent = then > limit;
-
-  return isRecent; // if date is after the limit
+  return then > limit; // if date is after the limit
 }
 
 // checks for messages that were written after 'timeToCheck' Date Time
