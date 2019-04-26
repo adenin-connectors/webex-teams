@@ -1,5 +1,5 @@
 {
-  "name": "webex",
+  "name": "webex-teams",
   "version": "1.0.0",
   "description": "See your Webex messages",
   "main": "index.js",

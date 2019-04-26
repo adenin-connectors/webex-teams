@@ -1,4 +1,4 @@
-ConnectorTitle: Webex
+ConnectorTitle: Webex Teams
 AccessCodeServiceEndpoint: https://api.ciscospark.com/v1/authorize
 AccessTokenServiceEndpoint: https://api.ciscospark.com/v1/access_token
 UserName: hide
