@@ -193,14 +193,32 @@ module.exports = async (activity) => {
           data.messages.items[j].displayName = users[i].body.displayName;
           data.messages.items[j].avatar = users[i].body.avatar;
         }
+
+        // assign avatar for the contact if direct message (avatar should match contact, not most recent user)
+        if (
+          data.messages.items[j].gtype === 'first' &&
+          data.messages.items[j].title === 'direct' &&
+          data.messages.items[j].roomName === users[i].body.displayName
+        ) {
+          data.messages.items[j].roomAvatar = users[i].body.avatar;
+        }
       }
 
       // map extended user info onto matching mentions
       for (let j = 0; j < data.mentions.items.length; j++) {
-        if (data.messages.items[j].personId === users[i].body.id) {
+        if (data.mentions.items[j].personId === users[i].body.id) {
           data.mentions.items[j].personId = undefined; // remove irrelevant property
           data.mentions.items[j].displayName = users[i].body.displayName;
           data.mentions.items[j].avatar = users[i].body.avatar;
+        }
+
+        // assign avatar for the contact if direct message (avatar should match contact, not most recent user)
+        if (
+          data.mentions.items[j].gtype === 'first' &&
+          data.mentions.items[j].title === 'direct' &&
+          data.mentions.items[j].roomName === users[i].body.displayName
+        ) {
+          data.mentions.items[j].roomAvatar = users[i].body.avatar;
         }
       }
     }
