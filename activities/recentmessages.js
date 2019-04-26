@@ -90,8 +90,10 @@ module.exports = async (activity) => {
 
           // get room name for the message
           for (let k = 0; k < rooms.length; k++) {
-            if (raw.roomId === rooms[k].id) item.roomName = rooms[k].title;
-            break; // skip remaining once found
+            if (raw.roomId === rooms[k].id) {
+              item.roomName = rooms[k].title;
+              break; // skip remaining once found
+            }
           }
 
           break;
@@ -154,8 +156,10 @@ module.exports = async (activity) => {
 
             // get room name for the message
             for (let l = 0; l < rooms.length; l++) {
-              if (raw.roomId === rooms[l].id) item.roomName = rooms[l].title;
-              break; // skip remaining once found
+              if (raw.roomId === rooms[l].id) {
+                item.roomName = rooms[l].title;
+                break; // skip remaining once found
+              }
             }
 
             break;
