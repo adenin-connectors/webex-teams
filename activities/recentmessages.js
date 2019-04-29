@@ -153,6 +153,7 @@ module.exports = async (activity) => {
 
             break;
           // 3rd message is last message displayed
+          case raw.mentionedPeople.length - 1:
           case 3: item.gtype = 'last';
           }
 
