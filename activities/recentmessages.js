@@ -264,7 +264,6 @@ function extendProperties(me, user, messages) {
     }
 
     // check for mentions of user to style @
-    if (!messages[j].displayName) continue;
     if (!messages[j].raw.html) continue;
 
     // if it was already previously matched, skip
