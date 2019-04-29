@@ -275,15 +275,22 @@ function extendProperties(me, user, messages) {
 
     if (!matches) continue; // skip if no matches
 
+    const matched = new Map();
+
     for (let k = 0; k < matches.length; k++) {
       // remove the opening tag from the match to extract the name
       const match = matches[k].substring(matches[k].lastIndexOf('>') + 1, matches[k].length);
+
+      if (matched.has(match)) continue;
 
       // allow us to replace all instances of the match
       const allMatches = new RegExp(match, 'g');
 
       // replace with styled mention element
       messages[j].description = messages[j].description.replace(allMatches, `<span class="blue">@${match}</span>`);
+
+      // make sure not to loop over multiple instances of same tag
+      matched.set(match, true);
     }
 
     messages[j].matched = true;
