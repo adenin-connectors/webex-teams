@@ -61,8 +61,7 @@ module.exports = async (activity) => {
       mentions: {
         count: 0,
         items: []
-      },
-      files: {items: []} // for preserved card logic
+      }
     };
 
     // we need current user's info to check when they've been mentioned
@@ -178,6 +177,8 @@ module.exports = async (activity) => {
           }));
 
           data.mentions.items.push(item);
+
+          break; // when one mention matched for message we can break
         }
       }
 
@@ -198,6 +199,12 @@ module.exports = async (activity) => {
       // extend properties on matching mentions for current user
       extendProperties(me, users[i], data.mentions.items);
     }
+
+    // match mention tags and style for messages
+    matchMentions(data.messages.items);
+
+    // match mention tags and style for mentions
+    matchMentions(data.mentions.items);
 
     activity.Response.Data = data;
     activity.Response.ErrorCode = 0; // if a user 404'd, error code was set - reset it
@@ -241,7 +248,7 @@ function extendProperties(me, user, messages) {
 
     // assign avatars or initials to generate them
     if (messages[j].gtype === 'first') {
-      // if it's a direct message, try to find the user avatar
+      // if it's a direct message and user matches, try to find the user avatar
       if (messages[j].title === 'direct' && messages[j].roomName === user.body.displayName) {
         messages[j].roomAvatar = user.body.avatar;
       }
@@ -256,18 +263,19 @@ function extendProperties(me, user, messages) {
           initials += names[k].charAt(0);
 
           // groups should only have one initial
-          if (messages[j].title === 'group' && k === 0) break;
+          if (messages[j].title === 'group') break;
         }
 
         messages[j].initials = initials;
       }
     }
+  }
+}
 
+function matchMentions(messages) {
+  for (let j = 0; j < messages.length; j++) {
     // check for mentions of user to style @
     if (!messages[j].raw.html) continue;
-
-    // if it was already previously matched, skip
-    if (messages[j].matched) continue;
 
     // matches contents of any 'spark-mention' tag in html of item
     const regex = /(<spark-mention(.*?)>)(\w|\d|\n|[().,\-:;@#$%^&*\[\]"'+–/\/®°⁰!?{}|`~]| )+?(?=(<\/spark-mention>))/g;
@@ -292,7 +300,5 @@ function extendProperties(me, user, messages) {
       // make sure not to loop over multiple instances of same tag
       matched.set(match, true);
     }
-
-    messages[j].matched = true;
   }
 }
