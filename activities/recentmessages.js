@@ -75,18 +75,11 @@ module.exports = async (activity) => {
       // for first 3 messages in current room
       for (let j = 0; j < 3 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
-        const item = {
-          id: raw.id,
-          title: raw.roomType,
-          description: raw.text,
-          link: raw.url,
-          date: new Date(raw.created),
-          personId: raw.personId,
-          raw: raw
-        };
 
         // skip if empty (possibly files only)
         if (!raw.text) continue;
+
+        const item = constructItem(raw);
 
         // indicate if its the first or last message in the thread
         switch (j) {
@@ -142,15 +135,7 @@ module.exports = async (activity) => {
           // we've found a mention, construct it
           currentRoomMentions++;
 
-          const item = {
-            id: raw.id,
-            title: raw.roomType,
-            description: raw.text,
-            link: raw.url,
-            date: new Date(raw.created),
-            personId: raw.personId,
-            raw: raw
-          };
+          const item = constructItem(raw);
 
           // indicate if its the first or last mention to be displayed
           switch (currentRoomMentions) {
@@ -178,7 +163,7 @@ module.exports = async (activity) => {
 
           data.mentions.items.push(item);
 
-          break; // when one mention matched for message we can break
+          break; // when one mention matched, move on to next message
         }
       }
 
@@ -234,6 +219,17 @@ function filterMessagesByTime(messages) {
   }
 
   return recents;
+}
+
+function constructItem(raw) {
+  return {
+    id: raw.id,
+    title: raw.roomType,
+    description: raw.text,
+    date: new Date(raw.created),
+    personId: raw.personId,
+    raw: raw
+  };
 }
 
 function extendProperties(me, user, messages) {
