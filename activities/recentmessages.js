@@ -87,7 +87,7 @@ module.exports = async (activity) => {
         };
 
         // skip if empty (possibly files only)
-        if (!raw.description) continue;
+        if (!raw.text) continue;
 
         // indicate if its the first or last message in the thread
         switch (j) {
@@ -133,7 +133,7 @@ module.exports = async (activity) => {
         if (!raw.mentionedPeople) continue;
 
         // skip if empty (possibly files only)
-        if (!raw.description) continue;
+        if (!raw.text) continue;
 
         // check each mention
         for (let k = 0; k < raw.mentionedPeople.length; k++) {
