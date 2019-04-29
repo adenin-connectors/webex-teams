@@ -65,6 +65,9 @@ module.exports = async (activity) => {
       files: {items: []} // for preserved card logic
     };
 
+    // we need current user's info to check when they've been mentioned
+    const me = await api('/people/me');
+
     // for each room
     for (let i = 0; i < filteredMessages.length; i++) {
       // count messages
@@ -79,8 +82,12 @@ module.exports = async (activity) => {
           description: raw.text,
           link: raw.url,
           date: new Date(raw.created),
-          personId: raw.personId
+          personId: raw.personId,
+          raw: raw
         };
+
+        // skip if empty (possibly files only)
+        if (!raw.description) continue;
 
         // indicate if its the first or last message in the thread
         switch (j) {
@@ -115,9 +122,6 @@ module.exports = async (activity) => {
       // keep track of mentions from current room so we can stop after 3
       let currentRoomMentions = 0;
 
-      // don't call api for user info until we know we definitely need it
-      let me = null;
-
       // need to check every message in current room for mentions
       for (let j = 0; j < filteredMessages[i].length; j++) {
         // if we already have 3 we can stop
@@ -128,8 +132,8 @@ module.exports = async (activity) => {
         // skip if no mentions
         if (!raw.mentionedPeople) continue;
 
-        // need current user's id to know when they've been mentioned
-        if (!me) me = await api('/people/me');
+        // skip if empty (possibly files only)
+        if (!raw.description) continue;
 
         // check each mention
         for (let k = 0; k < raw.mentionedPeople.length; k++) {
@@ -145,7 +149,8 @@ module.exports = async (activity) => {
             description: raw.text,
             link: raw.url,
             date: new Date(raw.created),
-            personId: raw.personId
+            personId: raw.personId,
+            raw: raw
           };
 
           // indicate if its the first or last mention to be displayed
@@ -173,9 +178,10 @@ module.exports = async (activity) => {
           }));
 
           data.mentions.items.push(item);
-          data.mentions.count++;
         }
       }
+
+      data.mentions.count += currentRoomMentions;
     }
 
     // we need to extend the user information for each message, resolve the stored promises
@@ -186,41 +192,11 @@ module.exports = async (activity) => {
       // skip if the user wasn't found
       if ($.isErrorResponse(activity, users[i])) continue;
 
-      // map extended user info onto matching messages
-      for (let j = 0; j < data.messages.items.length; j++) {
-        if (data.messages.items[j].personId === users[i].body.id) {
-          data.messages.items[j].personId = undefined; // remove irrelevant property
-          data.messages.items[j].displayName = users[i].body.displayName;
-          data.messages.items[j].avatar = users[i].body.avatar;
-        }
+      // extend properties on matching messages for current user
+      extendProperties(me, users[i], data.messages.items);
 
-        // assign avatar for the contact if direct message (avatar should match contact, not most recent user)
-        if (
-          data.messages.items[j].gtype === 'first' &&
-          data.messages.items[j].title === 'direct' &&
-          data.messages.items[j].roomName === users[i].body.displayName
-        ) {
-          data.messages.items[j].roomAvatar = users[i].body.avatar;
-        }
-      }
-
-      // map extended user info onto matching mentions
-      for (let j = 0; j < data.mentions.items.length; j++) {
-        if (data.mentions.items[j].personId === users[i].body.id) {
-          data.mentions.items[j].personId = undefined; // remove irrelevant property
-          data.mentions.items[j].displayName = users[i].body.displayName;
-          data.mentions.items[j].avatar = users[i].body.avatar;
-        }
-
-        // assign avatar for the contact if direct message (avatar should match contact, not most recent user)
-        if (
-          data.mentions.items[j].gtype === 'first' &&
-          data.mentions.items[j].title === 'direct' &&
-          data.mentions.items[j].roomName === users[i].body.displayName
-        ) {
-          data.mentions.items[j].roomAvatar = users[i].body.avatar;
-        }
-      }
+      // extend properties on matching mentions for current user
+      extendProperties(me, users[i], data.mentions.items);
     }
 
     activity.Response.Data = data;
@@ -233,7 +209,7 @@ module.exports = async (activity) => {
 function isRecent(date) {
   const then = new Date(date);
   const now = new Date();
-  const limit = new Date(now.setHours(now.getHours() - 12));
+  const limit = new Date(now.setHours(now.getHours() - 1200));
 
   return then > limit; // if date is after the limit
 }
@@ -251,4 +227,66 @@ function filterMessagesByTime(messages) {
   }
 
   return recents;
+}
+
+function extendProperties(me, user, messages) {
+  // map extended user info onto matching mentions
+  for (let j = 0; j < messages.length; j++) {
+    // first check if message is current user, change display name to 'You', else assign username if still match
+    if (messages[j].personId === me.body.id) {
+      messages[j].displayName = 'You';
+    } else if (messages[j].personId === user.body.id) {
+      messages[j].displayName = user.body.displayName;
+    }
+
+    // assign avatars or initials to generate them
+    if (messages[j].gtype === 'first') {
+      // if it's a direct message, try to find the user avatar
+      if (messages[j].title === 'direct' && messages[j].roomName === user.body.displayName) {
+        messages[j].roomAvatar = user.body.avatar;
+      }
+
+      // if the avatar wasn't found (or it's a group message), create initials to generate an avatar
+      if (!messages[j].roomAvatar) {
+        const names = messages[j].roomName.split(' ');
+        let initials = '';
+
+        // stop after two initials
+        for (let k = 0; k < names.length && k < 2; k++) {
+          initials += names[k].charAt(0);
+
+          // groups should only have one initial
+          if (messages[j].title === 'group' && k === 0) break;
+        }
+
+        messages[j].initials = initials;
+      }
+    }
+
+    // check for mentions of user to style @
+    if (!messages[j].displayName) continue;
+    if (!messages[j].raw.html) continue;
+
+    // if it was already previously matched, skip
+    if (messages[j].matched) continue;
+
+    // matches contents of any 'spark-mention' tag in html of item
+    const regex = /(<spark-mention(.*?)>)(\w|\d|\n|[().,\-:;@#$%^&*\[\]"'+–/\/®°⁰!?{}|`~]| )+?(?=(<\/spark-mention>))/g;
+    const matches = messages[j].raw.html.match(regex);
+
+    if (!matches) continue; // skip if no matches
+
+    for (let k = 0; k < matches.length; k++) {
+      // remove the opening tag from the match to extract the name
+      const match = matches[k].substring(matches[k].lastIndexOf('>') + 1, matches[k].length);
+
+      // allow us to replace all instances of the match
+      const allMatches = new RegExp(match, 'g');
+
+      // replace with styled mention element
+      messages[j].description = messages[j].description.replace(allMatches, `<span class="blue">@${match}</span>`);
+    }
+
+    messages[j].matched = true;
+  }
 }
