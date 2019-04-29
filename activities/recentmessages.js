@@ -2,13 +2,6 @@
 
 const api = require('./common/api');
 
-const dateDescending = (a, b) => {
-  a = new Date(a.lastActivity);
-  b = new Date(b.lastActivity);
-
-  return a > b ? -1 : (a < b ? 1 : 0);
-};
-
 module.exports = async (activity) => {
   try {
     api.initialize(activity);
@@ -23,7 +16,12 @@ module.exports = async (activity) => {
     const rooms = roomsResponse.body.items;
 
     // sort them newest first (aren't always chronological)
-    rooms.sort(dateDescending);
+    rooms.sort((a, b) => {
+      a = new Date(a.lastActivity);
+      b = new Date(b.lastActivity);
+
+      return a > b ? -1 : (a < b ? 1 : 0);
+    });
 
     // group api requests for messages to send in parallel
     const messagePromises = [];
