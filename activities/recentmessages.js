@@ -70,19 +70,23 @@ module.exports = async (activity) => {
       // count messages
       data.messages.count += filteredMessages[i].length;
 
+      let currentRoomMessages = 0;
+
       // for first 3 messages in current room
-      for (let j = 0; j < 3 && j < filteredMessages[i].length; j++) {
+      for (let j = 0; currentRoomMessages < 3 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
 
         // skip if empty (possibly files only)
         if (!raw.text) continue;
 
+        currentRoomMessages++;
+
         const item = constructItem(raw);
 
         // indicate if its the first or last message in the thread
-        switch (j) {
+        switch (currentRoomMessages) {
         // first
-        case 0:
+        case 1:
           item.gtype = 'first';
 
           // get room name for the message
@@ -95,7 +99,8 @@ module.exports = async (activity) => {
 
           break;
         // 3rd message is last message displayed
-        case 2 || filteredMessages[i].length - 1:
+        case filteredMessages[i].length - 1:
+        case 3:
           item.gtype = 'last';
           item.hiddenCount = filteredMessages[i].length - 3;
         }
@@ -113,10 +118,7 @@ module.exports = async (activity) => {
       let currentRoomMentions = 0;
 
       // need to check every message in current room for mentions
-      for (let j = 0; j < filteredMessages[i].length; j++) {
-        // if we already have 3 we can stop
-        if (currentRoomMentions === 3) break;
-
+      for (let j = 0; currentRoomMentions < 3 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
 
         // skip if no mentions
@@ -199,7 +201,7 @@ module.exports = async (activity) => {
 function isRecent(date) {
   const then = new Date(date);
   const now = new Date();
-  const limit = new Date(now.setHours(now.getHours() - 12));
+  const limit = new Date(now.setHours(now.getHours() - 1200));
 
   return then > limit; // if date is after the limit
 }
