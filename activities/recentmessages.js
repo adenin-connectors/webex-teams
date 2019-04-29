@@ -209,7 +209,7 @@ module.exports = async (activity) => {
 function isRecent(date) {
   const then = new Date(date);
   const now = new Date();
-  const limit = new Date(now.setHours(now.getHours() - 1200));
+  const limit = new Date(now.setHours(now.getHours() - 12));
 
   return then > limit; // if date is after the limit
 }
