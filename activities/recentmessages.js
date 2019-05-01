@@ -99,10 +99,10 @@ module.exports = async (activity) => {
 
           break;
         // 5th message is last message displayed
-        case filteredMessages[i].length - 1:
+        case filteredMessages[i].length:
         case 5:
           item.gtype = 'last';
-          item.hiddenCount = filteredMessages[i].length - 5;
+          item.hiddenCount = filteredMessages[i].length - currentRoomMessages;
         }
 
         // store a promise to retrieve user data, if one doesn't yet exist
@@ -150,7 +150,7 @@ module.exports = async (activity) => {
 
             break;
           // 5th message is last message displayed
-          case raw.mentionedPeople.length - 1:
+          case raw.mentionedPeople.length:
           case 5: item.gtype = 'last';
           }
 
