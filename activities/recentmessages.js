@@ -84,9 +84,7 @@ module.exports = async (activity) => {
         const item = constructItem(raw);
 
         // indicate if its the first or last message in the thread
-        switch (currentRoomMessages) {
-        // first
-        case 1:
+        if (currentRoomMessages === 1) {
           item.gtype = 'first';
 
           // get room name for the message
@@ -96,12 +94,15 @@ module.exports = async (activity) => {
               break; // skip remaining once found
             }
           }
+        }
 
-          break;
-        // 5th message is last message displayed
-        case filteredMessages[i].length:
-        case 5:
-          item.gtype = 'last';
+        if (currentRoomMessages === filteredMessages[i].length || currentRoomMessages === 5) {
+          if (item.gtype === 'first') {
+            item.gtype = 'firstlast';
+          } else {
+            item.gtype = 'last';
+          }
+
           item.hiddenCount = filteredMessages[i].length - currentRoomMessages;
         }
 
@@ -135,9 +136,7 @@ module.exports = async (activity) => {
           const item = constructItem(raw);
 
           // indicate if its the first or last mention to be displayed
-          switch (currentRoomMentions) {
-          // first
-          case 1:
+          if (currentRoomMentions === 1) {
             item.gtype = 'first';
 
             // get room name for the message
@@ -147,11 +146,14 @@ module.exports = async (activity) => {
                 break; // skip remaining once found
               }
             }
+          }
 
-            break;
-          // 5th message is last message displayed
-          case raw.mentionedPeople.length:
-          case 5: item.gtype = 'last';
+          if (currentRoomMentions === raw.mentionedPeople.length || currentRoomMentions === 5) {
+            if (item.gtype === 'first') {
+              item.gtype = 'firstlast';
+            } else {
+              item.gtype = 'last';
+            }
           }
 
           // store a promise to retrieve user data, if one doesn't yet exist
