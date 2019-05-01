@@ -73,7 +73,7 @@ module.exports = async (activity) => {
       let currentRoomMessages = 0;
 
       // for first 3 messages in current room
-      for (let j = 0; currentRoomMessages < 3 && j < filteredMessages[i].length; j++) {
+      for (let j = 0; currentRoomMessages < 5 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
 
         // skip if empty (possibly files only)
@@ -98,11 +98,11 @@ module.exports = async (activity) => {
           }
 
           break;
-        // 3rd message is last message displayed
+        // 5th message is last message displayed
         case filteredMessages[i].length - 1:
-        case 3:
+        case 5:
           item.gtype = 'last';
-          item.hiddenCount = filteredMessages[i].length - 3;
+          item.hiddenCount = filteredMessages[i].length - 5;
         }
 
         // store a promise to retrieve user data, if one doesn't yet exist
@@ -118,14 +118,11 @@ module.exports = async (activity) => {
       let currentRoomMentions = 0;
 
       // need to check every message in current room for mentions
-      for (let j = 0; currentRoomMentions < 3 && j < filteredMessages[i].length; j++) {
+      for (let j = 0; currentRoomMentions < 5 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
 
-        // skip if no mentions
-        if (!raw.mentionedPeople) continue;
-
-        // skip if empty (possibly files only)
-        if (!raw.text) continue;
+        // skip if empty (possibly files only) or if no mentions
+        if (!raw.text || !raw.mentionedPeople) continue;
 
         // check each mention
         for (let k = 0; k < raw.mentionedPeople.length; k++) {
@@ -152,9 +149,9 @@ module.exports = async (activity) => {
             }
 
             break;
-          // 3rd message is last message displayed
+          // 5th message is last message displayed
           case raw.mentionedPeople.length - 1:
-          case 3: item.gtype = 'last';
+          case 5: item.gtype = 'last';
           }
 
           // store a promise to retrieve user data, if one doesn't yet exist
@@ -192,6 +189,12 @@ module.exports = async (activity) => {
     // match mention tags and style for mentions
     matchMentions(data.mentions.items);
 
+    // indicate the initial and final items in each list for conditional styling
+    data.messages.items[0].initial = true;
+    data.mentions.items[0].initial = true;
+    data.messages.items[data.messages.items.length - 1].final = true;
+    data.mentions.items[data.mentions.items.length - 1].final = true;
+
     activity.Response.Data = data;
     activity.Response.ErrorCode = 0; // if a user 404'd, error code was set - reset it
   } catch (error) {
@@ -202,7 +205,7 @@ module.exports = async (activity) => {
 function isRecent(date) {
   const then = new Date(date);
   const now = new Date();
-  const limit = new Date(now.setHours(now.getHours() - 12));
+  const limit = new Date(now.setHours(now.getHours() - 12)); // 12hrs ago
 
   return then > limit; // if date is after the limit
 }
@@ -240,7 +243,7 @@ function extendProperties(me, user, messages) {
     if (messages[j].personId === me.body.id) {
       messages[j].displayName = 'You';
     } else if (messages[j].personId === user.body.id) {
-      messages[j].displayName = user.body.displayName;
+      messages[j].displayName = user.body.displayName.split(' ')[0]; // only first name is displayed within room list
     }
 
     // assign avatars or initials to generate them
