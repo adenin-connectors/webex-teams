@@ -190,10 +190,15 @@ module.exports = async (activity) => {
     matchMentions(data.mentions.items);
 
     // indicate the initial and final items in each list for conditional styling
-    data.messages.items[0].initial = true;
-    data.mentions.items[0].initial = true;
-    data.messages.items[data.messages.items.length - 1].final = true;
-    data.mentions.items[data.mentions.items.length - 1].final = true;
+    if (data.messages.items.length) {
+      data.messages.items[0].initial = true;
+      data.messages.items[data.messages.items.length - 1].final = true;
+    }
+
+    if (data.mentions.items.length) {
+      data.mentions.items[0].initial = true;
+      data.mentions.items[data.mentions.items.length - 1].final = true;
+    }
 
     activity.Response.Data = data;
     activity.Response.ErrorCode = 0; // if a user 404'd, error code was set - reset it
