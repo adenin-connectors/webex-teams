@@ -12,10 +12,17 @@ module.exports = async (activity) => {
     // if bad response, process and return
     if ($.isErrorResponse(activity, roomsResponse)) return;
 
-    // get room items from response
-    const rooms = roomsResponse.body.items;
+    // get room items from response, sort newest first
+    const unfilteredRooms = roomsResponse.body.items;
+    const rooms = [];
 
-    // sort them newest first (aren't always chronological)
+    for (let i = 0; i < unfilteredRooms.length; i++) {
+      if (!unfilteredRooms[i].lastActivity) continue;
+      if (!isRecent(unfilteredRooms[i].lastActivity)) continue;
+
+      rooms.push(unfilteredRooms[i]);
+    }
+
     rooms.sort((a, b) => {
       a = new Date(a.lastActivity);
       b = new Date(b.lastActivity);
@@ -27,9 +34,6 @@ module.exports = async (activity) => {
     const messagePromises = [];
 
     for (let i = 0; i < rooms.length; i++) {
-      // stop when room wasn't active recently enough
-      if (!isRecent(rooms[i].lastActivity)) break;
-
       // push the promise to get the room's messages
       messagePromises.push(api(`/messages?roomId=${rooms[i].id}`));
     }
@@ -254,7 +258,7 @@ function extendProperties(me, user, messages) {
     }
 
     // assign avatars or initials to generate them
-    if (messages[j].gtype === 'first') {
+    if (messages[j].gtype === 'first' || messages[j].gtype === 'firstlast') {
       // if it's a direct message and user matches, try to find the user avatar
       if (messages[j].title === 'direct' && messages[j].roomName === user.body.displayName) {
         messages[j].roomAvatar = user.body.avatar;
