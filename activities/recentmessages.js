@@ -80,12 +80,21 @@ module.exports = async (activity) => {
       for (let j = 0; currentRoomMessages < 5 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
 
-        // skip if empty (possibly files only)
-        if (!raw.text) continue;
-
         currentRoomMessages++;
 
         const item = constructItem(raw);
+
+        if (raw.files && raw.files.length > 0) {
+          item.fileCount = raw.files.length;
+        } else {
+          item.fileCount = 0;
+        }
+
+        // get the link from base64 room id
+        const linkBuffer = Buffer.from(raw.roomId, 'base64');
+        const rawLink = linkBuffer.toString('utf-8');
+
+        item.link = `ciscospark://im?space=${rawLink.substring(rawLink.lastIndexOf('/') + 1, rawLink.length)}`;
 
         // indicate if its the first or last message in the thread
         if (currentRoomMessages === 1) {
@@ -126,8 +135,8 @@ module.exports = async (activity) => {
       for (let j = 0; currentRoomMentions < 5 && j < filteredMessages[i].length; j++) {
         const raw = filteredMessages[i][j];
 
-        // skip if empty (possibly files only) or if no mentions
-        if (!raw.text || !raw.mentionedPeople) continue;
+        // skip if no mentions
+        if (!raw.mentionedPeople) continue;
 
         // check each mention
         for (let k = 0; k < raw.mentionedPeople.length; k++) {
@@ -138,6 +147,18 @@ module.exports = async (activity) => {
           currentRoomMentions++;
 
           const item = constructItem(raw);
+
+          if (raw.files && raw.files.length > 0) {
+            item.fileCount = raw.files.length;
+          } else {
+            item.fileCount = 0;
+          }
+
+          // get the link from base64 room id
+          const linkBuffer = Buffer.from(raw.roomId, 'base64');
+          const rawLink = linkBuffer.toString('utf-8');
+
+          item.link = `ciscospark://im?space=${rawLink.substring(rawLink.lastIndexOf('/') + 1, rawLink.length)}`;
 
           // indicate if its the first or last mention to be displayed
           if (currentRoomMentions === 1) {
@@ -152,7 +173,7 @@ module.exports = async (activity) => {
             }
           }
 
-          if (currentRoomMentions === raw.mentionedPeople.length || currentRoomMentions === 5) {
+          if (currentRoomMentions === filteredMessages[i].length || currentRoomMentions === 5) {
             if (item.gtype === 'first') {
               item.gtype = 'firstlast';
             } else {
