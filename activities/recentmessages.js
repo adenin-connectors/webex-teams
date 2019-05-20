@@ -58,11 +58,15 @@ module.exports = async (activity) => {
     const data = {
       messages: {
         count: 0,
-        items: []
+        items: [],
+        _page: 1,
+        _pageSize: 999
       },
       mentions: {
         count: 0,
-        items: []
+        items: [],
+        _page: 1,
+        _pageSize: 999
       }
     };
 
