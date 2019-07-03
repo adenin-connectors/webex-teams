@@ -50,7 +50,7 @@ api.initialize = (activity) => {
   _activity = activity;
 };
 
-api.stream = (url, opts) => got(url, Object.assign({}, opts, {
+api.stream = (url, opts) => api(url, Object.assign({}, opts, {
   json: false,
   stream: true
 }));
